@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "127202582496",
+    "project_id": "pim-arena",
+    "storage_bucket": "pim-arena.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:127202582496:android:f569f90f35494955879585",
+        "android_client_info": {
+          "package_name": "com.example.pi.arena"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDl8caLSHRlaoCCdyznKLFPY8hWaI0u1_M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
