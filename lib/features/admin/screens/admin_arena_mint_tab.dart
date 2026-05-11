@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:arena/core/services/api_service.dart';
+import 'package:arena/core/models/auth_models.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
@@ -46,6 +47,7 @@ class _AdminArenaMintTabState extends State<AdminArenaMintTab> {
 
   List<dynamic> _auditRows = [];
   bool _loadingAudit = true;
+  String? _auditLoadError;
   int _auditPage = 1;
   int _auditTotalPages = 1;
 
@@ -86,20 +88,37 @@ class _AdminArenaMintTabState extends State<AdminArenaMintTab> {
   }
 
   Future<void> _loadAudit() async {
-    setState(() => _loadingAudit = true);
+    setState(() {
+      _loadingAudit = true;
+      _auditLoadError = null;
+    });
+    const limit = 15;
     try {
-      final data = await _api.getWalletAdminFundings(page: _auditPage, limit: 15);
-      if (mounted) {
-        setState(() {
-          _auditRows = data['items'] as List<dynamic>? ?? [];
-          final total = (data['total'] as num?)?.toInt() ?? 0;
-          final limit = (data['limit'] as num?)?.toInt() ?? 15;
-          _auditTotalPages = (total / limit).ceil().clamp(1, 9999);
-          _loadingAudit = false;
-        });
+      final data = await _api.getWalletAdminFundings(page: _auditPage, limit: limit);
+      if (!mounted) return;
+      List<dynamic> items = const [];
+      final rawItems = data['items'];
+      if (rawItems is List<dynamic>) {
+        items = rawItems;
+      } else if (data['data'] is List<dynamic>) {
+        items = data['data'] as List<dynamic>;
       }
-    } catch (_) {
-      if (mounted) setState(() => _loadingAudit = false);
+      final total = (data['total'] as num?)?.toInt() ?? items.length;
+      final limitResp = (data['limit'] as num?)?.toInt() ?? limit;
+      setState(() {
+        _auditRows = items;
+        _auditTotalPages = (total / limitResp).ceil().clamp(1, 9999);
+        _loadingAudit = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e is ApiError ? e.displayMessage : e.toString();
+      setState(() {
+        _auditRows = [];
+        _auditTotalPages = 1;
+        _auditLoadError = msg;
+        _loadingAudit = false;
+      });
     }
   }
 
@@ -239,6 +258,7 @@ class _AdminArenaMintTabState extends State<AdminArenaMintTab> {
             const Center(child: CircularProgressIndicator(color: Color(0xFF0D6CF2)))
           else
             DropdownButtonFormField<String>(
+              isExpanded: true,
               dropdownColor: const Color(0xFF1E293B),
               value: _companyId,
               decoration: _dec('Entreprise (COMPANY)'),
@@ -248,15 +268,34 @@ class _AdminArenaMintTabState extends State<AdminArenaMintTab> {
                 final fn = m['firstName'] ?? '';
                 final ln = m['lastName'] ?? '';
                 final em = m['email'] ?? '';
+                final label = '$fn $ln — $em';
                 return DropdownMenuItem(
                   value: id,
                   child: Text(
-                    '$fn $ln — $em',
-                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                    label,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
                   ),
                 );
               }).toList(),
+              selectedItemBuilder: (context) {
+                return _companies.map((u) {
+                  final m = u as Map<String, dynamic>;
+                  final fn = m['firstName'] ?? '';
+                  final ln = m['lastName'] ?? '';
+                  final em = m['email'] ?? '';
+                  return Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Text(
+                      '$fn $ln — $em',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                    ),
+                  );
+                }).toList();
+              },
               onChanged: (v) => setState(() => _companyId = v),
             ),
           const SizedBox(height: 12),
@@ -268,15 +307,34 @@ class _AdminArenaMintTabState extends State<AdminArenaMintTab> {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
+            isExpanded: true,
             dropdownColor: const Color(0xFF1E293B),
             value: _paymentMethod,
             decoration: _dec('Mode de paiement (réel)'),
             items: _pm.entries
                 .map((e) => DropdownMenuItem(
                       value: e.key,
-                      child: Text(e.value, style: const TextStyle(color: Colors.white)),
+                      child: Text(
+                        e.value,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Colors.white),
+                      ),
                     ))
                 .toList(),
+            selectedItemBuilder: (context) {
+              return _pm.entries.map((e) {
+                return Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    e.value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                );
+              }).toList();
+            },
             onChanged: (v) => setState(() => _paymentMethod = v ?? 'BANK_TRANSFER'),
           ),
           const SizedBox(height: 12),
@@ -345,12 +403,25 @@ class _AdminArenaMintTabState extends State<AdminArenaMintTab> {
             decoration: _dec('URL preuve externe (optionnel, si pas de fichier)'),
           ),
           const SizedBox(height: 12),
-          OutlinedButton.icon(
+          OutlinedButton(
             onPressed: _pickProof,
-            icon: const Icon(Icons.attach_file, color: Color(0xFF00C2FF)),
-            label: Text(
-              _proofName ?? 'Joindre un justificatif (PDF, image…)',
-              style: const TextStyle(color: Colors.white70),
+            style: OutlinedButton.styleFrom(
+              alignment: AlignmentDirectional.centerStart,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.attach_file, color: Color(0xFF00C2FF)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _proofName ?? 'Joindre un justificatif (PDF, image…)',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 20),
@@ -370,11 +441,13 @@ class _AdminArenaMintTabState extends State<AdminArenaMintTab> {
           ),
           const SizedBox(height: 32),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Journal d’audit',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white),
+              Expanded(
+                child: Text(
+                  'Journal d’audit',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white),
+                ),
               ),
               TextButton(
                 onPressed: _loadingAudit ? null : _loadAudit,
@@ -382,13 +455,32 @@ class _AdminArenaMintTabState extends State<AdminArenaMintTab> {
               ),
             ],
           ),
+          if (_auditLoadError != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              _auditLoadError!,
+              style: TextStyle(color: Colors.red.shade300, fontSize: 12),
+            ),
+          ],
           if (_loadingAudit)
             const Padding(
               padding: EdgeInsets.all(24),
               child: Center(child: CircularProgressIndicator(color: Color(0xFF0D6CF2))),
             )
           else if (_auditRows.isEmpty)
-            Text('Aucune entrée', style: TextStyle(color: Colors.grey.shade500))
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Aucune entrée', style: TextStyle(color: Colors.grey.shade500)),
+                if (_auditLoadError == null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    'Les crédits enregistrés avec une référence de paiement apparaissent ici.',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                  ),
+                ],
+              ],
+            )
           else
             ..._auditRows.map((row) {
               final m = row as Map<String, dynamic>;
@@ -411,6 +503,8 @@ class _AdminArenaMintTabState extends State<AdminArenaMintTab> {
                     children: [
                       Text(
                         '$name · ${m['arenaCoinAmount'] ?? '?'} ARENA',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
@@ -419,6 +513,8 @@ class _AdminArenaMintTabState extends State<AdminArenaMintTab> {
                       const SizedBox(height: 4),
                       Text(
                         'Réf: ${m['paymentReference'] ?? ''} · ${m['paymentMethod'] ?? ''}',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
                       ),
                       if (sha != null && sha.isNotEmpty)

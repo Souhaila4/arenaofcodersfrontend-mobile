@@ -30,7 +30,7 @@ class ApiService {
     const fromEnv = String.fromEnvironment('API_BASE_URL');
     if (fromEnv.isNotEmpty) return fromEnv;
     // Défaut : IPv4 LAN typique du PC (Wi‑Fi). Si échec, vérifiez ipconfig ou utilisez --dart-define.
-    return 'http://192.168.0.92:3000';
+    return 'http://192.168.0.116:3000';
   }
 
   final StorageService _storage = StorageService();
@@ -1541,6 +1541,39 @@ class ApiService {
     }
   }
 
+  /// Admin : liste des certificats NFT émis (GET /admin/certificates)
+  Future<Map<String, dynamic>> getAdminCertificates({
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    final token = await _storage.getToken();
+    if (token == null) throw ApiError(statusCode: 401, message: 'Not authenticated');
+
+    final uri = Uri.parse('$baseUrl/admin/certificates').replace(
+      queryParameters: {
+        'limit': limit.toString(),
+        'offset': offset.toString(),
+      },
+    );
+
+    final response = await http.get(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else if (response.statusCode == 401) {
+      await _storage.clearAll();
+      throw ApiError(statusCode: 401, message: 'Session expired');
+    } else {
+      throw _handleError(response);
+    }
+  }
+
   // ─────────────────── WALLET (Arena Coin) ───────────────────
 
   /// Get current user's Arena Coin wallet info + transaction history
@@ -2272,6 +2305,132 @@ class ApiService {
       throw ApiError(statusCode: 401, message: 'Session expired');
     }
     throw _handleError(response);
+  }
+
+  // ─────────────────── JOB MATCHING ───────────────────
+
+  /// Créer une offre d'emploi (COMPANY uniquement)
+  Future<Map<String, dynamic>> createJob({
+    required String title,
+    required String description,
+    required String targetSpecialty,
+    required String companyName,
+    String? location,
+  }) async {
+    final token = await _storage.getToken();
+    if (token == null) throw ApiError(statusCode: 401, message: 'Not authenticated');
+
+    final body = <String, dynamic>{
+      'title': title,
+      'description': description,
+      'targetSpecialty': targetSpecialty,
+      'companyName': companyName,
+    };
+    if (location != null && location.isNotEmpty) body['location'] = location;
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/jobs'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode == 201) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else if (response.statusCode == 401) {
+      await _storage.clearAll();
+      throw ApiError(statusCode: 401, message: 'Session expired');
+    } else {
+      throw _handleError(response);
+    }
+  }
+
+  /// Lister les offres d'emploi actives
+  Future<List<Map<String, dynamic>>> getJobs() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/jobs'),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode == 200) {
+      final list = jsonDecode(response.body) as List<dynamic>;
+      return list.map((e) => e as Map<String, dynamic>).toList();
+    } else {
+      throw _handleError(response);
+    }
+  }
+
+  /// Détail d'une offre d'emploi
+  Future<Map<String, dynamic>> getJobById(String id) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/jobs/$id'),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      throw _handleError(response);
+    }
+  }
+
+  /// Lancer le matching IA pour une offre (COMPANY uniquement)
+  Future<Map<String, dynamic>> matchJobCandidates(String jobId, {int topN = 10}) async {
+    final token = await _storage.getToken();
+    if (token == null) throw ApiError(statusCode: 401, message: 'Not authenticated');
+
+    final response = await http
+        .post(
+      Uri.parse('$baseUrl/jobs/$jobId/match'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'topN': topN}),
+    )
+        .timeout(
+      const Duration(seconds: 120),
+      onTimeout: () {
+        throw ApiError(
+          statusCode: 408,
+          message: 'Le matching IA prend trop de temps. Réessayez.',
+        );
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else if (response.statusCode == 401) {
+      await _storage.clearAll();
+      throw ApiError(statusCode: 401, message: 'Session expired');
+    } else {
+      throw _handleError(response);
+    }
+  }
+
+  /// Récupérer les résultats du matching pour une offre
+  Future<Map<String, dynamic>> getJobMatches(String jobId) async {
+    final token = await _storage.getToken();
+    if (token == null) throw ApiError(statusCode: 401, message: 'Not authenticated');
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/jobs/$jobId/matches'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else if (response.statusCode == 401) {
+      await _storage.clearAll();
+      throw ApiError(statusCode: 401, message: 'Session expired');
+    } else {
+      throw _handleError(response);
+    }
   }
 
   // ─────────────────── HELPERS ───────────────────

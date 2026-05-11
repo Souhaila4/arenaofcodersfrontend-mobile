@@ -83,7 +83,7 @@ class _TestInterviewScreenState extends State<TestInterviewScreen> {
       final reply = await _api.postInterviewTurn(
         jobTitle: widget.job.title,
         jobDescription: widget.job.description,
-        companyName: widget.job.company,
+        companyName: widget.job.companyName,
         messages: _historyPayload(),
       );
       if (!mounted) return;
@@ -135,7 +135,7 @@ class _TestInterviewScreenState extends State<TestInterviewScreen> {
       final reply = await _api.postInterviewTurn(
         jobTitle: widget.job.title,
         jobDescription: widget.job.description,
-        companyName: widget.job.company,
+        companyName: widget.job.companyName,
         messages: _historyPayload(),
       );
       if (!mounted) return;

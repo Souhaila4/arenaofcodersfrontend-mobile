@@ -8,6 +8,7 @@ import 'package:arena/core/models/auth_models.dart';
 import 'package:arena/core/models/arena_mirror_model.dart';
 import 'package:arena/features/courses/screens/admin_courses_screen.dart';
 import 'package:arena/features/admin/screens/admin_arena_mint_tab.dart';
+import 'package:arena/features/admin/screens/admin_certificates_list_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -221,6 +222,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           title: const Text('Admin Dashboard', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
           backgroundColor: const Color(0xFF1E293B),
           iconTheme: const IconThemeData(color: Colors.white),
+          actions: [
+            IconButton(
+              tooltip: 'Certificats NFT émis',
+              icon: const Icon(Icons.workspace_premium_outlined, color: Colors.white),
+              onPressed: () {
+                Navigator.of(context).push<void>(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const AdminCertificatesListScreen(),
+                  ),
+                );
+              },
+            ),
+          ],
           bottom: const TabBar(
             isScrollable: true,
             indicatorColor: AppColors.primary,

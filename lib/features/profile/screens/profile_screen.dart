@@ -11,6 +11,7 @@ import 'package:arena/accessibility/accessibility_provider.dart';
 import 'package:arena/accessibility/accessibility_theme.dart';
 import 'package:arena/accessibility/accessibility_voice.dart';
 import 'package:arena/features/admin/screens/admin_dashboard_screen.dart';
+import 'package:arena/features/admin/screens/admin_certificates_list_screen.dart';
 import 'package:arena/features/hackathons/screens/create_competition_screen.dart';
 import 'package:arena/features/wallet/screens/wallet_screen.dart';
 import 'package:arena/app/shell.dart';
@@ -147,6 +148,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final totalChallenges = _user?.totalChallenges ?? 0;
     // Calculate a dummy global rank or XP score based on wins for display purposes
     final xpScore = totalWins * 150 + totalChallenges * 25;
+    final isAdmin = _user?.role == 'ADMIN';
 
     return Scaffold(
       body: Stack(
@@ -184,12 +186,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                         Text(
-                          'OPERATIVE PROFILE',
+                          isAdmin ? 'ADMIN CONSOLE' : 'OPERATIVE PROFILE',
                           style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 3,
-                            color: const Color(0xFF0D6CF2),
+                            fontSize: isAdmin ? 12 : 13,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: isAdmin ? 4 : 3,
+                            color: isAdmin ? const Color(0xFFC084FC) : const Color(0xFF0D6CF2),
+                            shadows: isAdmin
+                                ? [
+                                    Shadow(
+                                      color: const Color(0xFF9333EA).withValues(alpha: 0.65),
+                                      blurRadius: 12,
+                                    ),
+                                  ]
+                                : null,
                           ),
                         ),
                         IconButton(
@@ -223,7 +233,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFF0D6CF2).withAlpha(75),
+                                  color: isAdmin
+                                      ? const Color(0xFF9333EA).withValues(alpha: 0.55)
+                                      : const Color(0xFF0D6CF2).withAlpha(75),
                                   blurRadius: 40,
                                   spreadRadius: 5,
                                 ),
@@ -237,7 +249,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: AppColors.accentCyan.withAlpha(75),
+                                color: isAdmin
+                                    ? const Color(0xFFC084FC).withValues(alpha: 0.65)
+                                    : AppColors.accentCyan.withAlpha(75),
                               ),
                             ),
                           ),
@@ -248,13 +262,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: const Color(0xFF0D6CF2),
-                                width: 2,
+                                color: isAdmin ? const Color(0xFFA855F7) : const Color(0xFF0D6CF2),
+                                width: isAdmin ? 2.5 : 2,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFF0D6CF2).withAlpha(130),
-                                  blurRadius: 10,
+                                  color: isAdmin
+                                      ? const Color(0xFF9333EA).withValues(alpha: 0.45)
+                                      : const Color(0xFF0D6CF2).withAlpha(130),
+                                  blurRadius: isAdmin ? 14 : 10,
                                 ),
                               ],
                             ),
@@ -292,33 +308,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     ),
                                   ),
                           ),
-                          // Rank badge
+                          // Rank badge (avatar corner)
                           if (_user?.role != 'COMPANY')
                             Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF1A2332),
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: const Color(0xFF0D6CF2),
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withAlpha(80),
-                                    blurRadius: 8,
+                              bottom: 0,
+                              right: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1A2332),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: isAdmin
+                                        ? const Color(0xFFC084FC)
+                                        : const Color(0xFF0D6CF2),
                                   ),
-                                ],
-                              ),
-                              child: const Icon(
-                                Icons.military_tech,
-                                color: AppColors.accentCyan,
-                                size: 20,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withAlpha(80),
+                                      blurRadius: 8,
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(
+                                  isAdmin ? Icons.verified_user : Icons.military_tech,
+                                  color: isAdmin
+                                      ? const Color(0xFFE9D5FF)
+                                      : AppColors.accentCyan,
+                                  size: 20,
+                                ),
                               ),
                             ),
-                          ),
                         ],
                       ),
                       const SizedBox(height: 16),
@@ -332,15 +352,82 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const SizedBox(height: 4),
                       Text(
                         email.isNotEmpty ? email : '',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF0D6CF2),
+                          color: isAdmin ? const Color(0xFFC4B5FD) : const Color(0xFF0D6CF2),
                         ),
                       ),
                       const SizedBox(height: 12),
-                      // Rank badge
-                      if (_user?.role != 'COMPANY')
+                      // Role / tier strip
+                      if (isAdmin)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(50),
+                            gradient: LinearGradient(
+                              colors: [
+                                const Color(0xFF1E1035).withValues(alpha: 0.95),
+                                const Color(0xFF2D1B4E).withValues(alpha: 0.95),
+                              ],
+                            ),
+                            border: Border.all(
+                              color: const Color(0xFFC084FC).withValues(alpha: 0.85),
+                              width: 1.5,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF9333EA).withValues(alpha: 0.35),
+                                blurRadius: 16,
+                                spreadRadius: 0,
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.shield_moon_rounded,
+                                size: 18,
+                                color: Colors.purple.shade100,
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                'SYSTEM ADMIN',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 2.5,
+                                  color: Colors.purple.shade50,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF9333EA).withValues(alpha: 0.45),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  'FULL ACCESS',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 1,
+                                    color: Colors.purple.shade50,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else if (_user?.role != 'COMPANY')
                         Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -622,44 +709,127 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ],
                       if (_user != null && _user!.role == 'ADMIN') ...[
                         const SizedBox(height: 16),
-                        Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
-                              );
-                            },
-                            borderRadius: BorderRadius.circular(16),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF1A2332),
-                                border: Border.all(color: Colors.purpleAccent),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.admin_panel_settings,
-                                    color: Colors.purpleAccent,
-                                    size: 18,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Text(
-                                    'Admin Dashboard',
-                                    style: TextStyle(
-                                      color: Colors.purpleAccent,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 14,
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 360),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => const AdminDashboardScreen(),
+                                        ),
+                                      );
+                                    },
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: Ink(
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          colors: [
+                                            Color(0xFF6D28D9),
+                                            Color(0xFF9333EA),
+                                            Color(0xFFA855F7),
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        borderRadius: BorderRadius.circular(16),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: const Color(0xFF9333EA).withValues(alpha: 0.45),
+                                            blurRadius: 18,
+                                            offset: const Offset(0, 8),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 14,
+                                          horizontal: 16,
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            const Icon(
+                                              Icons.dashboard_customize_rounded,
+                                              color: Colors.white,
+                                              size: 22,
+                                            ),
+                                            const SizedBox(width: 10),
+                                            const Text(
+                                              'Admin Dashboard',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w800,
+                                                fontSize: 15,
+                                                letterSpacing: 0.5,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ],
-                              ),
+                                ),
+                                const SizedBox(height: 12),
+                                Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => const AdminCertificatesListScreen(),
+                                        ),
+                                      );
+                                    },
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 13,
+                                        horizontal: 16,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF1A2332),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: const Color(0xFFD4AF37).withValues(alpha: 0.9),
+                                          width: 1.5,
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: const Color(0xFFD4AF37).withValues(alpha: 0.12),
+                                            blurRadius: 12,
+                                          ),
+                                        ],
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          const Icon(
+                                            Icons.workspace_premium_rounded,
+                                            color: Color(0xFFE9C46A),
+                                            size: 22,
+                                          ),
+                                          const SizedBox(width: 10),
+                                          const Text(
+                                            'Certificats NFT émis',
+                                            style: TextStyle(
+                                              color: Color(0xFFF4E4BC),
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -759,8 +929,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                 ),
-              // Skill Matrix
-              if (_user?.role != 'COMPANY')
+              // Skill Matrix (hidden for COMPANY and ADMIN)
+              if (_user?.role != 'COMPANY' && _user?.role != 'ADMIN')
                 SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -855,8 +1025,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                 ),
-              // Battle Data
-              if (_user?.role != 'COMPANY')
+              // Battle Data (hidden for COMPANY and ADMIN)
+              if (_user?.role != 'COMPANY' && _user?.role != 'ADMIN')
                 SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
